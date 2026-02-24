@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Aurex Player</title>      
+        <style>
+            :root {
+                --bg-start: #1a1c24;
+                --bg-end: #06070b;
+                --card-bg: rgba(255,255,255,0.05);
+                --border: rgba(255,255,255,0.08);
+                --text: white;
+            }
+            
+            /*@media (prefers-color-scheme: light) {
+                :root {
+                    --bg-start: #eef1f6;
+                    --bg-end: #dfe5ee;
+                    --card-bg: rgba(255,255,255,0.7);
+                    --border: rgba(0,0,0,0.08);
+                    --text: #111;
+                }
+            }*/
+            
+            * {
+                user-select: none;
+                -webkit-tap-highlight-color: transparent;
+            }
+            
+            body {
+                margin: 0;
+                min-height: 100vh;
+                background: radial-gradient(circle at top, var(--bg-start), var(--bg-end) 70%);
+                font-family: system-ui, sans-serif;
+                color: var(--text);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            .container {
+                backdrop-filter: blur(25px);
+                background: var(--card-bg);
+                border: 1px solid var(--border);
+                border-radius: 24px;
+                padding: 0;
+                max-width: 420px;
+                width: 90%;
+                text-align: left;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+                transition: 300ms ease;
+            }
+            
+            body.modal-open .container {
+                filter: blur(8px) scale(0.98);
+            }
+            
+            .poster {
+                width: 100%;
+                display: block;
+                border-radius: 24px 24px 0 0;
+                margin: 0;
+                box-shadow: none;
+            }
+            
+            .title {
+                font-size: 24px;
+                font-weight: 700;
+                letter-spacing: 0.2px;
+                line-height: 1.25;
+            
+                margin: 18px 0 14px;
+                text-align: left;
+            }
+            
+            .media-meta {
+                margin-top: 14px;
+                text-align: left;
+                display: grid;
+                gap: 8px;
+                font-size: 14px;
+            }
+            
+            .meta-row {
+                display: flex;
+                justify-content: space-between;
+                gap: 12px;
+            }
+            
+            .meta-label {
+                opacity: 0.6;
+                font-weight: 500;
+            }
+            
+            .meta-value {
+                font-weight: 600;
+            }
+            
+            .play-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+            
+                padding: 10px 16px;
+                border-radius: 999px;
+                border: 1px solid rgba(255,255,255,0.15);
+            
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 500;
+            
+                color: var(--text);
+                background: rgba(255,255,255,0.08);
+                backdrop-filter: blur(12px);
+            
+                transition: transform 160ms ease, box-shadow 160ms ease;
+                box-shadow:
+                    0 6px 18px rgba(0,0,0,0.35),
+                    inset 0 1px 0 rgba(255,255,255,0.15);
+                    
+                margin: 12px auto 0;
+                display: flex;
+                justify-content: center;
+            }
+            
+            .play-btn:active {
+                transform: scale(0.96);
+                box-shadow:
+                    0 4px 12px rgba(0,0,0,0.3),
+                    inset 0 1px 0 rgba(255,255,255,0.1);
+            }
+            
+            .play-icon {
+                width: 16px;
+                height: 16px;
+                fill: currentColor;
+            }
+            
+            /* soft breathing glow */
+            .play-btn::after {
+                content: "";
+                position: absolute;
+                inset: -4px;
+                border-radius: inherit;
+                background: radial-gradient(circle, rgba(124,58,237,0.25), transparent 60%);
+                opacity: 0.6;
+                filter: blur(10px);
+                animation: breathe 3s ease-in-out infinite;
+                z-index: -1;
+            }
+            
+            @keyframes breathe {
+                0%, 100% { opacity: 0.4; transform: scale(0.98); }
+                50% { opacity: 0.9; transform: scale(1.04); }
+            }
+            
+            .hint {
+                margin-top: 16px;
+                font-size: 13px;
+                opacity: 0.6;
+                display: block;
+                text-align: center;
+            }
+            
+            /* Modal */
+            
+            .modal-overlay {
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.6);
+                backdrop-filter: blur(12px);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+                z-index: 1000;
+            
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 250ms ease;
+            }
+            
+            .modal-overlay.show {
+                opacity: 1;
+                pointer-events: auto;
+            }
+            
+            .modal {
+                background: var(--card-bg);
+                border: 1px solid var(--border);
+                border-radius: 20px;
+                padding: 24px;
+                max-width: 380px;
+                width: 100%;
+                text-align: center;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+            
+                transform: scale(0.92);
+                opacity: 0;
+                transition: transform 250ms ease, opacity 250ms ease;
+            }
+            
+            .modal-overlay.show .modal {
+                transform: scale(1);
+                opacity: 1;
+            }
+            
+            .modal h2 {
+                margin: 0 0 10px;
+            }
+            
+            .modal p {
+                opacity: 0.7;
+                font-size: 14px;
+                margin-bottom: 20px;
+            }
+            
+            .modal button {
+                padding: 12px 20px;
+                border-radius: 999px;
+                border: none;
+                cursor: pointer;
+                background: rgba(255,255,255,0.1);
+                color: var(--text);
+            }
+            
+            .content {
+                padding: 24px 28px 28px;
+            }
+        </style>
+    </head>
+    <body> 
+        <div class="container">
+            <img id="poster" class="poster" style="display:none;">
+            <div class="content">
+                <div id="mediaInfo" class="title"></div>
+                <button id="playBtn" class="play-btn">
+                    <svg class="play-icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M8 5v14l11-7z"/>
+                    </svg>
+                    Play in Aurex Player
+                </button>
+                <div class="hint">If the app isn’t installed nothing will happen</div>
+            </div>
+        </div>
+        
+        <div id="modalOverlay" class="modal-overlay">
+            <div class="modal">
+                <h2>Still here?</h2>
+                <p>Maybe this device does not have Aurex Player installed. Install the app and try again.</p>
+                <button id="retryBtn">Try again</button>
+            </div>
+        </div>
+        
+        <script>
+            function isAndroid() {
+                return /Android/i.test(navigator.userAgent);
+            }
+            
+            const params = new URLSearchParams(window.location.search);
+            const url = params.get('url');
+            
+            if (!url) alert('Missing url parameter');
+            
+            const poster = params.get('poster');
+            
+            const type = params.get('type') || 'movie';
+            const name = params.get('name') || 'Unknown';
+            const runtime = params.get('runtime') || '';
+            
+            const mediaInfo = document.getElementById('mediaInfo');
+            
+            if (type === 'series') {
+                const season = params.get('season') || '?';
+                const episode = params.get('episode') || '?';
+            
+                mediaInfo.innerHTML = `
+                    <div>${name}</div>
+                    <div class="media-meta">
+                        <div class="meta-row">
+                            <div class="meta-label">Season</div>
+                            <div class="meta-value">${season}</div>
+                        </div>
+                        <div class="meta-row">
+                            <div class="meta-label">Episode</div>
+                            <div class="meta-value">${episode}</div>
+                        </div>
+                        ${runtime ? `
+                        <div class="meta-row">
+                            <div class="meta-label">Runtime</div>
+                            <div class="meta-value">${runtime}</div>
+                        </div>` : ''}
+                    </div>
+                `;
+            } else {
+                const year = params.get('year') || '';
+            
+                mediaInfo.innerHTML = `
+                    <div>${name}</div>
+                    <div class="media-meta">
+                        ${year ? `
+                        <div class="meta-row">
+                            <div class="meta-label">Year</div>
+                            <div class="meta-value">${year}</div>
+                        </div>` : ''}
+                        ${runtime ? `
+                        <div class="meta-row">
+                            <div class="meta-label">Runtime</div>
+                            <div class="meta-value">${runtime}</div>
+                        </div>` : ''}
+                    </div>
+                `;
+            }
+            
+            if (poster) {
+                const img = document.getElementById('poster');
+                img.src = poster;
+                img.style.display = 'block';
+            }
+            
+            function buildDeepLink() {
+                const allowedKeys = [
+                    'url',
+                    'title'
+                ];
+            
+                const filtered = new URLSearchParams();
+            
+                allowedKeys.forEach(key => {
+                    if (params.has(key)) {
+                        filtered.set(key, params.get(key));
+                    }
+                });
+            
+                return `aurexplayer://play?${filtered.toString()}`;
+            }
+            
+            let appOpened = false;
+            
+            document.addEventListener("visibilitychange", () => {
+                if (document.hidden) appOpened = true;
+            });
+            
+            function vibrate() {
+                if (navigator.vibrate) navigator.vibrate([40,30,40]);
+            }
+            
+            const overlay = document.getElementById("modalOverlay");
+            
+            function openApp() {
+                appOpened = false;
+                window.location.href = buildDeepLink();
+            
+                setTimeout(() => {
+                    if (!appOpened) {
+                        overlay.classList.add("show");
+                        document.body.classList.add("modal-open");
+                        vibrate();
+                    }
+                }, 1500);
+            }
+            
+            document.getElementById('playBtn').addEventListener('click', () => {
+                if (!isAndroid()) {
+                    alert('Please open on Android');
+                    return;
+                }
+                openApp();
+            });
+            
+            document.getElementById("retryBtn").addEventListener("click", () => {
+                overlay.classList.remove("show");
+                document.body.classList.remove("modal-open");
+                openApp();
+            });
+            
+            overlay.addEventListener("click", (e) => {
+                if (e.target === overlay) {
+                    overlay.classList.remove("show");
+                    document.body.classList.remove("modal-open");
+                }
+            });
+        </script>
+    </body>
+</html>
